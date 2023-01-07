@@ -54,7 +54,7 @@ def get_api_answer(timestamp: int) -> dict[str, Union[int, list[dict]]]:
                                 headers=HEADERS,
                                 params={'from_date': timestamp})
         if response.status_code == HTTPStatus.OK:
-            logger.debug(f'Успешное подключение к API.')
+            logger.debug('Успешное подключение к API.')
             return response.json()
         else:
             status: int = response.status_code
