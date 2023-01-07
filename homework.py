@@ -14,14 +14,13 @@ import exceptions
 
 load_dotenv()
 
-PRACTICUM_TOKEN: Final[str] = os.getenv('PRACTICUM_TOKEN')
-TELEGRAM_TOKEN: Final[str] = os.getenv('TELEGRAM_TOKEN')
-TELEGRAM_CHAT_ID: Final[Union[int, str]] = os.getenv('TELEGRAM_CHAT_ID')
+PRACTICUM_TOKEN: str = os.getenv('PRACTICUM_TOKEN')
+TELEGRAM_TOKEN: str = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID: Union[int, str] = os.getenv('TELEGRAM_CHAT_ID')
 
-RETRY_PERIOD: Final[int] = 600
-ENDPOINT: Final[str] = ('https://practicum.yandex.ru/'
-                        'api/user_api/homework_statuses/')
-HEADERS: Final[dict[str, str]] = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
+RETRY_PERIOD: int = 600
+ENDPOINT: str = ('https://practicum.yandex.ru/api/user_api/homework_statuses/')
+HEADERS: dict[str, str] = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
 HOMEWORK_VERDICTS: dict[str, str] = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
