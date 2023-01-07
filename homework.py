@@ -2,7 +2,7 @@ import os
 import sys
 import time
 import logging
-from typing import Union, NoReturn
+from typing import Union, NoReturn, List
 from http import HTTPStatus
 
 import requests
@@ -46,7 +46,7 @@ def check_tokens() -> NoReturn:
         logger.debug('Переменные окружения найдены и подключены.')
 
 
-def get_api_answer(timestamp: int) -> dict[str, Union[int, list[dict]]]:
+def get_api_answer(timestamp: int) -> dict[str, Union[int, List[dict]]]:
     """Делает запрос к эндпоинту API-сервиса."""
     try:
         response = requests.get(ENDPOINT,
@@ -64,7 +64,7 @@ def get_api_answer(timestamp: int) -> dict[str, Union[int, list[dict]]]:
         logger.error('Не удалось подключиться к API.')
 
 
-def check_response(response: dict[str, Union[int, list[dict]]]) -> NoReturn:
+def check_response(response: dict[str, Union[int, List[dict]]]) -> NoReturn:
     """Проверяет ответ API на соответствие документации."""
     if not isinstance(response, dict):
         msg: str = 'Структура ответа API не соответствует ожиданиям.'
@@ -129,7 +129,7 @@ def main() -> NoReturn:
     logger.debug(f'Зафиксировано время запроса: {timestamp}.')
 
     sent_get_api: bool = False
-    response: dict[str, Union[int, list[dict]]] = get_api_answer(timestamp)
+    response: dict[str, Union[int, List[dict]]] = get_api_answer(timestamp)
     if not response:
         send_message(bot, 'Ошибка при запросе к API')
         logger.debug('Отправка сообщения об ошибке в Telegram.')
