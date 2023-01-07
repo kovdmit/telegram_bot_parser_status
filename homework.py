@@ -2,7 +2,7 @@ import os
 import sys
 import time
 import logging
-from typing import Union, Final, NoReturn
+from typing import Union, NoReturn
 from http import HTTPStatus
 
 import requests
