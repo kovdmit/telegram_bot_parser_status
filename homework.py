@@ -2,7 +2,7 @@ import os
 import sys
 import time
 import logging
-from typing import Union, NoReturn, List
+from typing import Union, NoReturn, List, Dict
 from http import HTTPStatus
 
 import requests
@@ -20,9 +20,9 @@ TELEGRAM_CHAT_ID: Union[int, str] = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_PERIOD: int = 600
 ENDPOINT: str = ('https://practicum.yandex.ru/api/user_api/homework_statuses/')
-HEADERS: dict[str, str] = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
+HEADERS: Dict[str, str] = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
-HOMEWORK_VERDICTS: dict[str, str] = {
+HOMEWORK_VERDICTS: Dict[str, str] = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
@@ -46,7 +46,7 @@ def check_tokens() -> NoReturn:
         logger.debug('Переменные окружения найдены и подключены.')
 
 
-def get_api_answer(timestamp: int) -> dict[str, Union[int, List[dict]]]:
+def get_api_answer(timestamp: int) -> Dict[str, Union[int, List[Dict]]]:
     """Делает запрос к эндпоинту API-сервиса."""
     try:
         response = requests.get(ENDPOINT,
@@ -64,9 +64,9 @@ def get_api_answer(timestamp: int) -> dict[str, Union[int, List[dict]]]:
         logger.error('Не удалось подключиться к API.')
 
 
-def check_response(response: dict[str, Union[int, List[dict]]]) -> NoReturn:
+def check_response(response: Dict[str, Union[int, List[Dict]]]) -> NoReturn:
     """Проверяет ответ API на соответствие документации."""
-    if not isinstance(response, dict):
+    if not isinstance(response, Dict):
         msg: str = 'Структура ответа API не соответствует ожиданиям.'
         logger.error(msg)
         raise TypeError(msg)
@@ -84,7 +84,7 @@ def check_response(response: dict[str, Union[int, List[dict]]]) -> NoReturn:
         logger.debug('Ответ API успешно обработан.')
 
 
-def parse_status(homework: dict[str, Union[str, int]]) -> str:
+def parse_status(homework: Dict[str, Union[str, int]]) -> str:
     """Извлекает из информации о конкретной домашней работе её статус."""
     status: str = homework.get('status')
     if status not in HOMEWORK_VERDICTS:
@@ -129,7 +129,7 @@ def main() -> NoReturn:
     logger.debug(f'Зафиксировано время запроса: {timestamp}.')
 
     sent_get_api: bool = False
-    response: dict[str, Union[int, List[dict]]] = get_api_answer(timestamp)
+    response: Dict[str, Union[int, List[Dict]]] = get_api_answer(timestamp)
     if not response:
         send_message(bot, 'Ошибка при запросе к API')
         logger.debug('Отправка сообщения об ошибке в Telegram.')
@@ -160,7 +160,7 @@ def main() -> NoReturn:
         finally:
             timestamp: int = response.get('current_date')
             logger.debug(f'Зафиксировано время запроса: {timestamp}.')
-            response: dict = get_api_answer(timestamp)
+            response: Dict = get_api_answer(timestamp)
             if not response and not sent_get_api:
                 send_message(bot, 'Ошибка при запросе к API')
                 logger.debug('Отправка сообщения об ошибке в Telegram.')
