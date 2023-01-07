@@ -56,8 +56,8 @@ def get_api_answer(timestamp: int) -> Dict[str, Union[int, List[Dict]]]:
             logger.debug('Успешное подключение к API.')
             return response.json()
         else:
-            status: int = response.status_code
-            msg: str = f'Неудачный запрос к API. Статус {status}.'
+            msg: str = (f'Неудачный запрос к API. '
+                        f'Статус: {response.status_code}.')
             logger.error(msg)
             raise exceptions.BadConnection(msg)
     except requests.RequestException:
@@ -76,7 +76,7 @@ def check_response(response: Dict[str, Union[int, List[Dict]]]) -> NoReturn:
         logger.error(msg)
         raise exceptions.IncorrectResponse(msg)
     elif not isinstance(response.get('homeworks'), list):
-        msg: str = ('В ответе API домашней работы под ключом `homeworks` '
+        msg: str = ('В ответе API домашней работы под ключом "homeworks" '
                     'данные приходят не в виде списка.')
         logger.error(msg)
         raise TypeError(msg)
@@ -125,7 +125,7 @@ def main() -> NoReturn:
         logger.error(info)
         raise exceptions.BadConnection(info)
 
-    timestamp: int = int(time.time())
+    timestamp: int = 0
     logger.debug(f'Зафиксировано время запроса: {timestamp}.')
 
     sent_get_api: bool = False
@@ -146,7 +146,7 @@ def main() -> NoReturn:
                 logger.debug('Изменение статуса домашней работы. '
                              'Просмотр последней записи.')
                 homework = response.get('homeworks')[0]
-                logger.debug('Получена первая запись. Чтение информации.')
+                logger.debug('Получена последняя запись. Чтение информации.')
                 message = parse_status(homework)
                 logger.debug('Сформировано сообщение для отправки в Telegram.'
                              ' Попытка отправки.')
