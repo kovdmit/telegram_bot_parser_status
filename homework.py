@@ -113,8 +113,8 @@ def send_message(bot: telegram.Bot, message: str) -> NoReturn:
 
 def main() -> NoReturn:
     """Основная логика работы бота."""
-    logger.debug(f'Запуск программы. Данные обновляются каждые {RETRY_PERIOD}'
-                 ' секунд.')
+    logger.info(f'Запуск программы. Данные обновляются каждые {RETRY_PERIOD}'
+                ' секунд.')
     check_tokens()
 
     try:
