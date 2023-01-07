@@ -125,15 +125,10 @@ def main() -> NoReturn:
         logger.error(info)
         raise exceptions.BadConnection(info)
 
-    timestamp: int = 0
+    timestamp: int = int(time.time())
     logger.debug(f'Зафиксировано время запроса: {timestamp}.')
 
-    sent_get_api: bool = False
     response: Dict[str, Union[int, List[Dict]]] = get_api_answer(timestamp)
-    if not response:
-        send_message(bot, 'Ошибка при запросе к API')
-        logger.debug('Отправка сообщения об ошибке в Telegram.')
-        sent_get_api = True
     check_response(response)
 
     while True:
@@ -161,10 +156,6 @@ def main() -> NoReturn:
             timestamp: int = response.get('current_date')
             logger.debug(f'Зафиксировано время запроса: {timestamp}.')
             response: Dict = get_api_answer(timestamp)
-            if not response and not sent_get_api:
-                send_message(bot, 'Ошибка при запросе к API')
-                logger.debug('Отправка сообщения об ошибке в Telegram.')
-                sent_get_api = True
             check_response(response)
 
 
