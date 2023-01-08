@@ -152,6 +152,7 @@ def main() -> NoReturn:
             message: str = f'Сбой в работе программы: {error}'
             logger.error(message)
             send_message(bot, message)
+            break
         finally:
             timestamp: int = response.get('current_date')
             logger.debug(f'Зафиксировано время запроса: {timestamp}.')
