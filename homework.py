@@ -7,7 +7,6 @@ from http import HTTPStatus
 
 import requests
 from dotenv import load_dotenv
-
 import telegram
 
 import exceptions
@@ -19,7 +18,7 @@ TELEGRAM_TOKEN: str = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID: Union[int, str] = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_PERIOD: int = 600
-ENDPOINT: str = ('https://practicum.yandex.ru/api/user_api/homework_statuses/')
+ENDPOINT: str = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS: Dict[str, str] = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
 HOMEWORK_VERDICTS: Dict[str, str] = {
@@ -46,7 +45,7 @@ def check_tokens() -> NoReturn:
         logger.debug('Переменные окружения найдены и подключены.')
 
 
-def get_api_answer(timestamp: int) -> Dict[str, Union[int, List[Dict]]]:
+def get_api_answer(timestamp: int) -> Dict[str, Union[int, List]]:
     """Делает запрос к эндпоинту API-сервиса."""
     try:
         response = requests.get(ENDPOINT,
@@ -64,7 +63,7 @@ def get_api_answer(timestamp: int) -> Dict[str, Union[int, List[Dict]]]:
         logger.error('Не удалось подключиться к API.')
 
 
-def check_response(response: Dict[str, Union[int, List[Dict]]]) -> NoReturn:
+def check_response(response: Dict[str, Union[int, List]]) -> NoReturn:
     """Проверяет ответ API на соответствие документации."""
     if not isinstance(response, Dict):
         msg: str = 'Структура ответа API не соответствует ожиданиям.'
@@ -97,7 +96,8 @@ def parse_status(homework: Dict[str, Union[str, int]]) -> str:
         logger.error(msg)
         raise exceptions.MissingHomeworkName(msg)
     verdict: str = HOMEWORK_VERDICTS.get(status)
-    message = f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    message: str = (f'Изменился статус проверки работы "{homework_name}".'
+                    f' {verdict}')
     logger.info(message)
     return message
 
@@ -128,7 +128,7 @@ def main() -> NoReturn:
     timestamp: int = int(time.time())
     logger.debug(f'Зафиксировано время запроса: {timestamp}.')
 
-    response: Dict[str, Union[int, List[Dict]]] = get_api_answer(timestamp)
+    response: Dict[str, Union[int, List]] = get_api_answer(timestamp)
     check_response(response)
 
     while True:
@@ -155,7 +155,7 @@ def main() -> NoReturn:
         finally:
             timestamp: int = response.get('current_date')
             logger.debug(f'Зафиксировано время запроса: {timestamp}.')
-            response: Dict = get_api_answer(timestamp)
+            response: Dict[str, Union[int, List]] = get_api_answer(timestamp)
             check_response(response)
 
 
