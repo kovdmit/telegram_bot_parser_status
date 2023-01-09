@@ -14,5 +14,17 @@ class MissingHomeworkName(Exception):
     pass
 
 
-class IncorrectResponse(Exception):
+class NoExpendKeysResponse(Exception):
+    pass
+
+
+class ResponseIsNotDict(Exception):
+    pass
+
+
+class ResponseHomeworkIsNotList(Exception):
+    pass
+
+
+class DontSentMessage(Exception):
     pass

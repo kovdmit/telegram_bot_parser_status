@@ -34,15 +34,19 @@ formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+sent_error_tg: Dict[str, bool] = {
+    'connect_api': False,
+    'response_is_dict': False,
+    'response_has_keys': False,
+    'unknown_status': False,
+    'missing_homework_name': False,
+    'other': False,
+}
 
-def check_tokens() -> NoReturn:
+
+def check_tokens() -> bool:
     """Проверяет доступность необходимых переменных окружения."""
-    if not PRACTICUM_TOKEN or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        error: str = 'Недостаточно переменных окружения для запуска программы.'
-        logger.critical(error)
-        raise exceptions.MissingEnviromentsVariable(error)
-    else:
-        logger.debug('Переменные окружения найдены и подключены.')
+    return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
 def get_api_answer(timestamp: int) -> Dict[str, Union[int, List]]:
@@ -52,112 +56,124 @@ def get_api_answer(timestamp: int) -> Dict[str, Union[int, List]]:
                                 headers=HEADERS,
                                 params={'from_date': timestamp})
         if response.status_code == HTTPStatus.OK:
-            logger.debug('Успешное подключение к API.')
             return response.json()
         else:
-            msg: str = (f'Неудачный запрос к API. '
-                        f'Статус: {response.status_code}.')
-            logger.error(msg)
-            raise exceptions.BadConnection(msg)
+            raise exceptions.BadConnection('Не удалось подключиться к API.')
     except requests.RequestException:
-        logger.error('Не удалось подключиться к API.')
+        raise exceptions.BadConnection('Не удалось подключиться к API.')
 
 
 def check_response(response: Dict[str, Union[int, List]]) -> NoReturn:
     """Проверяет ответ API на соответствие документации."""
     if not isinstance(response, Dict):
-        msg: str = 'Структура ответа API не соответствует ожиданиям.'
-        logger.error(msg)
-        raise TypeError(msg)
+        raise TypeError('Структура ответа API не соответствует ожиданиям.')
     elif response.get('homeworks') is None or response.get('current_date'
                                                            ) is None:
-        msg: str = 'В ответе API нет необходимых данных.'
-        logger.error(msg)
-        raise exceptions.IncorrectResponse(msg)
+        raise exceptions.NoExpendKeysResponse('В ответе API нет '
+                                              'необходимых данных.')
     elif not isinstance(response.get('homeworks'), list):
-        msg: str = ('В ответе API домашней работы под ключом "homeworks" '
-                    'данные приходят не в виде списка.')
-        logger.error(msg)
-        raise TypeError(msg)
-    else:
-        logger.debug('Ответ API успешно обработан.')
+        raise TypeError('В ответе API домашней работы под ключом "homeworks" '
+                        'данные приходят не в виде списка.')
 
 
 def parse_status(homework: Dict[str, Union[str, int]]) -> str:
     """Извлекает из информации о конкретной домашней работе её статус."""
     status: str = homework.get('status')
     if status not in HOMEWORK_VERDICTS:
-        msg: str = f'Получен неизвестный статус домашней работы: {status}.'
-        logger.error(msg)
-        raise exceptions.UnknownStatus(msg)
+        raise exceptions.UnknownStatus('Получен неизвестный статус '
+                                       f'домашней работы: {status}.')
     homework_name: str = homework.get('homework_name')
     if not homework_name:
-        msg: str = 'Не передано название домашней работы.'
-        logger.error(msg)
-        raise exceptions.MissingHomeworkName(msg)
+        raise exceptions.MissingHomeworkName('Не передано название домашки.')
     verdict: str = HOMEWORK_VERDICTS.get(status)
     message: str = (f'Изменился статус проверки работы "{homework_name}".'
                     f' {verdict}')
-    logger.info(message)
     return message
 
 
 def send_message(bot: telegram.Bot, message: str) -> NoReturn:
     """Отправляет сообщение в Telegram чат."""
+    logger.debug(f'Попытка отправить сообщение: {message}')
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logger.debug(f'Сообщение  отправлено: {message}')
     except Exception as error:
-        logger.error(f'Не удалось отправить сообщение в Telegram чат {error}')
+        logger.error(error)
+        raise exceptions.DontSentMessage('Не удалось отправить сообщение '
+                                         f'в Telegram чат {error}')
+    else:
+        logger.debug(f'Сообщение  отправлено: {message}')
+
+
+def send_error_to_tg(bot: telegram.Bot,
+                     key: str,
+                     msg: str = None) -> NoReturn:
+    """Отправляет сообщение об ошибке в телеграм один раз."""
+    if not sent_error_tg.get(key):
+        send_message(bot, msg)
+        sent_error_tg[key] = True
+        logger.debug(f'Попробуем ещё раз через {RETRY_PERIOD} секунд.')
+        time.sleep(RETRY_PERIOD)
 
 
 def main() -> NoReturn:
     """Основная логика работы бота."""
     logger.info(f'Запуск программы. Данные обновляются каждые {RETRY_PERIOD}'
-                ' секунд.')
-    check_tokens()
+                ' секунд. Поиск токенов авторизации.')
+
+    if not check_tokens():
+        error: str = 'Недостаточно переменных окружения для запуска программы.'
+        logger.critical(error)
+        sys.exit(error)
+    logger.debug('Переменные окружения (токены) найдены и подключены. '
+                 'Попытка подключения к Telegram боту.')
 
     try:
         bot = telegram.Bot(token=TELEGRAM_TOKEN)
-        logger.debug('Telegram бот успешно подключен.')
     except Exception as error:
-        info: str = f'Не удалось подключиться к Telegram боту: {error}.'
-        logger.error(info)
-        raise exceptions.BadConnection(info)
+        msg: str = (f'Не удалось подключиться к Telegram боту: {error}. '
+                    f'Программа остановлена.')
+        logger.error(msg)
+        sys.exit(msg)
+    else:
+        logger.debug('Telegram бот успешно подключен.')
 
     timestamp: int = int(time.time())
     logger.debug(f'Зафиксировано время запроса: {timestamp}.')
 
-    response: Dict[str, Union[int, List]] = get_api_answer(timestamp)
-    check_response(response)
-
     while True:
+        logger.debug('Узнаём статус домашней работы.')
         try:
-            if len(response.get('homeworks')) == 0:
+            logger.debug('Попытка подключения к API.')
+            response: Dict[str, Union[int, List]] = get_api_answer(timestamp)
+            logger.debug('Проверка ответа API на соответствие документации.')
+            check_response(response)
+            if response and len(response.get('homeworks')) == 0:
+                logger.info('Статус домашней работы работы не изменён.')
                 logger.debug(f'Ожидание {RETRY_PERIOD} секунд.')
                 time.sleep(RETRY_PERIOD)
-                logger.info('Статус домашней работы работы не изменён.')
             else:
                 logger.debug('Изменение статуса домашней работы. '
                              'Просмотр последней записи.')
                 homework = response.get('homeworks')[0]
                 logger.debug('Получена последняя запись. Чтение информации.')
-                message = parse_status(homework)
-                logger.debug('Сформировано сообщение для отправки в Telegram.'
-                             ' Попытка отправки.')
-                send_message(bot, message)
+                try:
+                    message = parse_status(homework)
+                    logger.debug('Готово сообщение для отправки в Telegram.')
+                    logger.info(message)
+                    send_message(bot, message)
+                except Exception as error:
+                    logger.error(error)
+                    send_error_to_tg(bot, 'unknown_status', error)
+                    continue
                 logger.debug(f'Ожидание {RETRY_PERIOD} секунд.')
                 time.sleep(RETRY_PERIOD)
         except Exception as error:
             message: str = f'Сбой в работе программы: {error}'
-            logger.error(message)
-            send_message(bot, message)
+            send_error_to_tg(bot, 'other', message)
             break
-        finally:
-            timestamp: int = response.get('current_date')
+        else:
             logger.debug(f'Зафиксировано время запроса: {timestamp}.')
-            response: Dict[str, Union[int, List]] = get_api_answer(timestamp)
-            check_response(response)
+            timestamp: int = response.get('current_date')
 
 
 if __name__ == '__main__':
