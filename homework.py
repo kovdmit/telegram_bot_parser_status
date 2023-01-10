@@ -34,15 +34,6 @@ formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-sent_error_tg: Dict[str, bool] = {
-    'connect_api': False,
-    'response_is_dict': False,
-    'response_has_keys': False,
-    'unknown_status': False,
-    'missing_homework_name': False,
-    'other': False,
-}
-
 
 def check_tokens() -> bool:
     """Проверяет доступность необходимых переменных окружения."""
@@ -104,17 +95,6 @@ def send_message(bot: telegram.Bot, message: str) -> NoReturn:
         logger.debug(f'Сообщение  отправлено: {message}')
 
 
-def send_error_to_tg(bot: telegram.Bot,
-                     key: str,
-                     msg: str = None) -> NoReturn:
-    """Отправляет сообщение об ошибке в телеграм один раз."""
-    if not sent_error_tg.get(key):
-        send_message(bot, msg)
-        sent_error_tg[key] = True
-        logger.debug(f'Попробуем ещё раз через {RETRY_PERIOD} секунд.')
-        time.sleep(RETRY_PERIOD)
-
-
 def main() -> NoReturn:
     """Основная логика работы бота."""
     logger.info(f'Запуск программы. Данные обновляются каждые {RETRY_PERIOD}'
@@ -127,53 +107,44 @@ def main() -> NoReturn:
     logger.debug('Переменные окружения (токены) найдены и подключены. '
                  'Попытка подключения к Telegram боту.')
 
-    try:
-        bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    except Exception as error:
-        msg: str = (f'Не удалось подключиться к Telegram боту: {error}. '
-                    f'Программа остановлена.')
-        logger.error(msg)
-        sys.exit(msg)
-    else:
-        logger.debug('Telegram бот успешно подключен.')
-
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp: int = int(time.time())
     logger.debug(f'Зафиксировано время запроса: {timestamp}.')
+    sent_error_to_tg: bool = False
 
     while True:
         logger.debug('Узнаём статус домашней работы.')
         try:
             logger.debug('Попытка подключения к API.')
             response: Dict[str, Union[int, List]] = get_api_answer(timestamp)
-            logger.debug('Проверка ответа API на соответствие документации.')
+            logger.debug('Удачное подключение к API. '
+                         'Проверка ответа API на соответствие документации.')
             check_response(response)
+            logger.debug('Ответ API соответствует документации.')
             if response and len(response.get('homeworks')) == 0:
                 logger.info('Статус домашней работы работы не изменён.')
                 logger.debug(f'Ожидание {RETRY_PERIOD} секунд.')
-                time.sleep(RETRY_PERIOD)
             else:
                 logger.debug('Изменение статуса домашней работы. '
                              'Просмотр последней записи.')
                 homework = response.get('homeworks')[0]
                 logger.debug('Получена последняя запись. Чтение информации.')
-                try:
-                    message = parse_status(homework)
-                    logger.debug('Готово сообщение для отправки в Telegram.')
-                    logger.info(message)
-                    send_message(bot, message)
-                except Exception as error:
-                    logger.error(error)
-                    send_error_to_tg(bot, 'unknown_status', error)
-                    continue
+                message = parse_status(homework)
+                logger.debug('Готово сообщение для отправки в Telegram.')
+                logger.info(message)
+                send_message(bot, message)
                 logger.debug(f'Ожидание {RETRY_PERIOD} секунд.')
-                time.sleep(RETRY_PERIOD)
         except Exception as error:
             message: str = f'Сбой в работе программы: {error}'
-            send_error_to_tg(bot, 'other', message)
+            if not sent_error_to_tg:
+                send_message(bot, message)
+                sent_error_to_tg = True
             break
         else:
             logger.debug(f'Зафиксировано время запроса: {timestamp}.')
             timestamp: int = response.get('current_date')
+        finally:
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
