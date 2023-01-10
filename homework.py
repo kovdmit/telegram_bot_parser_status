@@ -74,7 +74,7 @@ def parse_status(homework: Dict[str, Union[str, int]]) -> str:
         raise exceptions.UnknownStatus('Получен неизвестный статус '
                                        f'домашней работы: {status}.')
     homework_name: str = homework.get('homework_name')
-    if not homework_name:
+    if homework_name is None:
         raise exceptions.MissingHomeworkName('Не передано название домашки.')
     verdict: str = HOMEWORK_VERDICTS.get(status)
     message: str = (f'Изменился статус проверки работы "{homework_name}".'
@@ -135,8 +135,9 @@ def main() -> NoReturn:
                 send_message(bot, message)
                 logger.debug(f'Ожидание {RETRY_PERIOD} секунд.')
         except Exception as error:
+            logger.error(error)
             message: str = f'Сбой в работе программы: {error}'
-            if not sent_error_to_tg:
+            if sent_error_to_tg is None:
                 send_message(bot, message)
                 sent_error_to_tg = True
             break
