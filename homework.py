@@ -137,7 +137,7 @@ def main() -> NoReturn:
         except Exception as error:
             logger.error(error)
             message: str = f'Сбой в работе программы: {error}'
-            if sent_error_to_tg is None:
+            if not sent_error_to_tg:
                 send_message(bot, message)
                 sent_error_to_tg = True
             break
