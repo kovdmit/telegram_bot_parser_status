@@ -1,7 +1,3 @@
-class MissingEnviromentsVariable(Exception):
-    pass
-
-
 class BadConnection(Exception):
     pass
 
@@ -15,14 +11,6 @@ class MissingHomeworkName(Exception):
 
 
 class NoExpendKeysResponse(Exception):
-    pass
-
-
-class ResponseIsNotDict(Exception):
-    pass
-
-
-class ResponseHomeworkIsNotList(Exception):
     pass
 
 
